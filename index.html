@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="scanlines"></div>
+  <div class="noise"></div>
+
+  <div id="screen-login" class="screen active">
+    <div class="login-wrap">
+      <div class="logo-block">
+        <div class="logo-eyebrow">TORN CITY</div>
+        <h1 class="logo-title">THE GAME</h1>
+      </div>
+      <div class="input-group">
+        <input type="text" id="api-key-input" class="text-input" placeholder="ENTER YOUR PUBLIC API KEY" autocomplete="off" spellcheck="false" />
+        <button id="login-btn" class="btn btn-primary" onclick="login()"><span>ENTER</span></button>
+      </div>
+      <div id="login-error" class="error-msg hidden"></div>
+    </div>
+  </div>
+
+  <div id="screen-game" class="screen">
+    <div class="game-wrap">
+
+      <header class="game-header">
+        <div class="header-logo">THE GAME</div>
+        <div class="header-right">
+          <div class="player-info">
+            <span id="player-name" class="player-name"></span>
+            <span class="player-sep">·</span>
+            <span id="player-id" class="player-id"></span>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="logout()">LOGOUT</button>
+        </div>
+      </header>
+
+      <main class="game-main">
+
+        <div class="balance-panel">
+          <div class="balance-label">YOUR BALANCE</div>
+          <div class="balance-value">
+            <span id="balance-amount">0</span>
+            <span class="balance-unit">XAN</span>
+          </div>
+          <div class="balance-sub">
+            <span id="balance-zero-msg" class="hidden zero-msg">DEPOSIT XANAX TO PLAY</span>
+          </div>
+        </div>
+
+        <div class="bet-panel" id="bet-panel">
+          <div class="bet-label">SET YOUR BET</div>
+          <div class="bet-controls">
+            <button class="bet-adj-btn" onclick="adjustBet(-1)">−</button>
+            <input type="number" id="bet-input" class="bet-input" value="1" min="1" />
+            <button class="bet-adj-btn" onclick="adjustBet(1)">+</button>
+          </div>
+          <div class="quick-bets">
+            <button class="quick-btn" onclick="quickBet(1)">1</button>
+            <button class="quick-btn" onclick="quickBet(5)">5</button>
+            <button class="quick-btn" onclick="quickBet(10)">10</button>
+            <button class="quick-btn" onclick="quickBet(50)">50</button>
+            <button class="quick-btn quick-btn-allin" onclick="quickBet('all')">ALL IN</button>
+          </div>
+          <button id="spin-btn" class="btn btn-spin" onclick="placeBet()">
+            <span id="spin-btn-text">PLAY</span>
+          </button>
+        </div>
+
+        <div id="result-panel" class="result-panel hidden">
+          <div id="result-icon" class="result-icon"></div>
+          <div id="result-text" class="result-text"></div>
+          <div id="result-sub" class="result-sub"></div>
+          <button class="btn btn-ghost btn-sm mt-2" onclick="dismissResult()">PLAY AGAIN</button>
+        </div>
+
+        <div class="info-accordions">
+          <details class="accordion">
+            <summary class="accordion-title">HOW TO ADD FUNDS</summary>
+            <div class="accordion-body">
+              Send <strong>Xanax (item #206)</strong> to player
+              <strong class="highlight">Deviyl [3722358]</strong>
+              in Torn with the message <strong class="highlight">"The Game"</strong>.
+              Your balance updates automatically within 60 seconds.
+            </div>
+          </details>
+          <details class="accordion">
+            <summary class="accordion-title">HOW TO WITHDRAW</summary>
+            <div class="accordion-body">
+              To withdraw your balance, send a message to
+              <strong class="highlight">Deviyl [3722358]</strong>
+              in Torn requesting a payout. Your full balance will be returned and your account zeroed out.
+            </div>
+          </details>
+          <details class="accordion">
+            <summary class="accordion-title">API KEY USAGE</summary>
+            <div class="accordion-body">
+              This site uses your <strong>public</strong> Torn API key only to verify your identity.
+              It is never stored and never used to access private account data.
+              Find your public key in Torn under <strong>Settings → API Key</strong>.
+            </div>
+          </details>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
