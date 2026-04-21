@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="scanlines"></div>
+  <div class="noise"></div>
+
+  <div id="screen-admin-login" class="screen active">
+    <div class="login-wrap">
+      <div class="logo-block">
+        <div class="logo-eyebrow">RESTRICTED ACCESS</div>
+        <h1 class="logo-title">ADMIN</h1>
+      </div>
+      <div class="input-group">
+        <input type="password" id="admin-pass-input" class="text-input" placeholder="PASSWORD" />
+        <button class="btn btn-primary" onclick="adminLogin()"><span>ENTER</span></button>
+      </div>
+      <div id="admin-login-error" class="error-msg hidden"></div>
+    </div>
+  </div>
+
+  <div id="screen-admin" class="screen">
+    <div class="admin-wrap">
+
+      <header class="game-header">
+        <div class="header-logo">THE GAME — ADMIN</div>
+        <button class="btn btn-ghost btn-sm" onclick="window.location.href='index.html'">EXIT</button>
+      </header>
+
+      <div class="admin-stats-row">
+        <div class="stat-card">
+          <div class="stat-label">HOUSE BALANCE</div>
+          <div class="stat-value" id="admin-house">—</div>
+          <div class="stat-unit">XAN</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">TOTAL OUTSTANDING</div>
+          <div class="stat-value" id="admin-outstanding">—</div>
+          <div class="stat-unit">XAN OWED</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">AVAILABLE TO HOUSE</div>
+          <div class="stat-value" id="admin-available">—</div>
+          <div class="stat-unit">XAN SAFE</div>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <div class="admin-section-title">PLAYER BALANCES</div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>PLAYER</th>
+                <th>ID</th>
+                <th>BALANCE</th>
+              </tr>
+            </thead>
+            <tbody id="admin-users-tbody">
+              <tr><td colspan="3" class="loading-cell">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <div class="admin-section-title">RECENT ACTIVITY</div>
+        <div class="admin-log" id="admin-log">
+          <div class="loading-cell">Loading...</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
