@@ -470,6 +470,8 @@ body::before {
 
 .accordion-body strong { color: var(--text); font-weight: 600; }
 .highlight { color: var(--gold) !important; text-shadow: var(--gold-glow); }
+a.highlight { text-decoration: none; }
+a.highlight:hover { text-decoration: underline; }
 
 #screen-admin { flex-direction: column; }
 
