@@ -1,7 +1,7 @@
 const WORKER_URL = "https://thegame.deviyl.workers.dev";
 const COOKIE_NAME = "theGameApi";
 const COOKIE_TTL = 60 * 60 * 24;
-const BALANCE_POLL_MS = 30000;
+const BALANCE_POLL_MS = 60000;
 
 let state = {
   userId: null,
@@ -99,7 +99,7 @@ function logout() {
   state = { userId: null, userName: null, balance: 0 };
   document.getElementById("api-key-input").value = "";
   document.getElementById("login-error").classList.add("hidden");
-  dismissResult();
+  clearResult();
   showScreen("screen-login");
 }
 
@@ -176,6 +176,7 @@ async function placeBet() {
 
   spinBtn.disabled = true;
   spinText.textContent = "...";
+  clearResult();
 
   try {
     const data = await callWorker("placeBet", { userId: state.userId, betAmount });
@@ -197,23 +198,21 @@ function showResult(won, betAmount, newBalance) {
   const icon = document.getElementById("result-icon");
   const text = document.getElementById("result-text");
   const sub = document.getElementById("result-sub");
-  const betPanel = document.getElementById("bet-panel");
 
   panel.className = "result-panel " + (won ? "win" : "lose");
   icon.textContent = won ? "◆" : "✕";
   text.textContent = won ? "YOU WIN" : "YOU LOSE";
   sub.textContent = won
-    ? `+${betAmount} xanax  ·  new balance: ${newBalance}`
+    ? `+${betAmount} xanax  ·  balance: ${newBalance}`
     : `-${betAmount} xanax  ·  remaining: ${newBalance}`;
-
-  panel.classList.remove("hidden");
-  betPanel.style.display = "none";
 }
 
-function dismissResult() {
-  document.getElementById("result-panel").classList.add("hidden");
-  document.getElementById("bet-panel").style.display = "flex";
-  updateBalanceUI();
+function clearResult() {
+  const panel = document.getElementById("result-panel");
+  panel.className = "result-panel";
+  document.getElementById("result-icon").textContent = "";
+  document.getElementById("result-text").textContent = "";
+  document.getElementById("result-sub").textContent = "";
 }
 
 function showError(el, msg) {
