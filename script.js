@@ -1,10 +1,29 @@
 const WORKER_URL = "https://thegame.deviyl.workers.dev";
+const COOKIE_NAME = "theGameApi";
+const COOKIE_TTL = 60 * 60 * 24;
+const BALANCE_POLL_MS = 30000;
 
 let state = {
   userId: null,
   userName: null,
   balance: 0,
 };
+
+let balanceInterval = null;
+
+function setCookie(name, value, seconds) {
+  const expires = new Date(Date.now() + seconds * 1000).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires};path=/;SameSite=Strict`;
+}
+
+function getCookie(name) {
+  const match = document.cookie.split("; ").find((c) => c.startsWith(name + "="));
+  return match ? decodeURIComponent(match.split("=")[1]) : null;
+}
+
+function deleteCookie(name) {
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
+}
 
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
@@ -22,35 +41,52 @@ async function callWorker(action, body = {}) {
   return res.json();
 }
 
-async function login() {
-  const apiKey = document.getElementById("api-key-input").value.trim();
+async function loginWithKey(apiKey, silent = false) {
   const errorEl = document.getElementById("login-error");
   const btn = document.getElementById("login-btn");
 
-  errorEl.classList.add("hidden");
-  if (!apiKey) { showError(errorEl, "Please enter your API key."); return; }
-
-  btn.disabled = true;
-  btn.querySelector("span").textContent = "VERIFYING...";
+  if (!silent) {
+    errorEl.classList.add("hidden");
+    btn.disabled = true;
+    btn.querySelector("span").textContent = "VERIFYING...";
+  }
 
   try {
     const data = await callWorker("verifyUser", { apiKey });
-    if (data.error) { showError(errorEl, data.error); return; }
+    if (data.error) {
+      if (!silent) showError(errorEl, data.error);
+      deleteCookie(COOKIE_NAME);
+      return false;
+    }
 
     state.userId = data.id;
     state.userName = data.name;
+
+    setCookie(COOKIE_NAME, apiKey, COOKIE_TTL);
 
     document.getElementById("player-name").textContent = data.name;
     document.getElementById("player-id").textContent = `#${data.id}`;
 
     await refreshBalance();
     showScreen("screen-game");
+    startBalancePolling();
+    return true;
   } catch (err) {
-    showError(errorEl, "Could not connect. Please try again.");
+    if (!silent) showError(errorEl, "Could not connect. Please try again.");
+    return false;
   } finally {
-    btn.disabled = false;
-    btn.querySelector("span").textContent = "ENTER";
+    if (!silent) {
+      btn.disabled = false;
+      btn.querySelector("span").textContent = "ENTER";
+    }
   }
+}
+
+async function login() {
+  const apiKey = document.getElementById("api-key-input").value.trim();
+  const errorEl = document.getElementById("login-error");
+  if (!apiKey) { showError(errorEl, "Please enter your API key."); return; }
+  await loginWithKey(apiKey, false);
 }
 
 document.getElementById("api-key-input")?.addEventListener("keydown", (e) => {
@@ -58,6 +94,8 @@ document.getElementById("api-key-input")?.addEventListener("keydown", (e) => {
 });
 
 function logout() {
+  deleteCookie(COOKIE_NAME);
+  stopBalancePolling();
   state = { userId: null, userName: null, balance: 0 };
   document.getElementById("api-key-input").value = "";
   document.getElementById("login-error").classList.add("hidden");
@@ -73,6 +111,20 @@ async function refreshBalance() {
       updateBalanceUI();
     }
   } catch (err) {}
+}
+
+function startBalancePolling() {
+  stopBalancePolling();
+  balanceInterval = setInterval(() => {
+    if (state.userId) refreshBalance();
+  }, BALANCE_POLL_MS);
+}
+
+function stopBalancePolling() {
+  if (balanceInterval) {
+    clearInterval(balanceInterval);
+    balanceInterval = null;
+  }
 }
 
 function updateBalanceUI() {
@@ -168,3 +220,18 @@ function showError(el, msg) {
   el.textContent = msg;
   el.classList.remove("hidden");
 }
+
+(async function init() {
+  const savedKey = getCookie(COOKIE_NAME);
+  if (savedKey) {
+    const btn = document.getElementById("login-btn");
+    const span = btn?.querySelector("span");
+    if (span) span.textContent = "LOADING...";
+    if (btn) btn.disabled = true;
+    const ok = await loginWithKey(savedKey, true);
+    if (!ok) {
+      if (span) span.textContent = "ENTER";
+      if (btn) btn.disabled = false;
+    }
+  }
+})();
