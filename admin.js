@@ -1,6 +1,22 @@
 const WORKER_URL = "https://thegame.deviyl.workers.dev";
+const ADMIN_COOKIE = "theGameAdminPass";
+const COOKIE_TTL = 60 * 60 * 24;
 
 let adminPassword = null;
+
+function setCookie(name, value, seconds) {
+  const expires = new Date(Date.now() + seconds * 1000).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires};path=/;SameSite=Strict`;
+}
+
+function getCookie(name) {
+  const match = document.cookie.split("; ").find((c) => c.startsWith(name + "="));
+  return match ? decodeURIComponent(match.split("=")[1]) : null;
+}
+
+function deleteCookie(name) {
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
+}
 
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
@@ -18,27 +34,34 @@ async function callWorker(action, body = {}) {
   return res.json();
 }
 
-async function adminLogin() {
-  const passInput = document.getElementById("admin-pass-input");
+async function loginWithPassword(password, silent = false) {
   const errorEl = document.getElementById("admin-login-error");
-  const password = passInput.value.trim();
-
-  errorEl.classList.add("hidden");
-  if (!password) { showError(errorEl, "Enter the admin password."); return; }
+  if (!silent) errorEl.classList.add("hidden");
 
   try {
     const data = await callWorker("validatePassword", { password });
     if (!data.valid) {
-      showError(errorEl, "Incorrect password.");
-      passInput.value = "";
-      return;
+      if (!silent) showError(errorEl, "Incorrect password.");
+      deleteCookie(ADMIN_COOKIE);
+      return false;
     }
     adminPassword = password;
+    setCookie(ADMIN_COOKIE, password, COOKIE_TTL);
     await loadDashboard();
     showScreen("screen-admin");
+    return true;
   } catch (err) {
-    showError(errorEl, "Connection error. Try again.");
+    if (!silent) showError(errorEl, "Connection error. Try again.");
+    return false;
   }
+}
+
+async function adminLogin() {
+  const passInput = document.getElementById("admin-pass-input");
+  const password = passInput.value.trim();
+  if (!password) { showError(document.getElementById("admin-login-error"), "Enter the admin password."); return; }
+  const ok = await loginWithPassword(password, false);
+  if (!ok) passInput.value = "";
 }
 
 document.getElementById("admin-pass-input")?.addEventListener("keydown", (e) => {
@@ -83,3 +106,8 @@ function escapeHtml(str) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+(async function init() {
+  const savedPass = getCookie(ADMIN_COOKIE);
+  if (savedPass) await loginWithPassword(savedPass, true);
+})();
