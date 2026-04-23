@@ -180,16 +180,18 @@ async function placeBet() {
 
   try {
     const data = await callWorker("placeBet", { userId: state.userId, betAmount });
-    if (data.error === "OFFLINE") {
-      showResultError("The Game is currently offline. Please try again later.");
-      return;
-    }
-    if (data.error === "RETRY") {
-      showResultError("The server was busy. Your bet was not placed — please try again.");
-      return;
-    }
     if (data.error) {
-      showResultError(data.error);
+      const errorMessages = {
+        "OFFLINE":             "The Game is currently offline. Please try again later.",
+        "RETRY":               "The server was busy — your bet was not placed. Please try again.",
+        "Missing fields":      "Something went wrong with your bet. Please refresh and try again.",
+        "Invalid bet":         "Invalid bet amount. Please try again.",
+        "User not found":      "Your account was not found. Please log out and back in.",
+        "Insufficient balance":"Your bet exceeds your current balance.",
+        "System unavailable":  "The Game is temporarily unavailable. Please try again shortly.",
+      };
+      const msg = errorMessages[data.error] || "An unexpected error occurred. Your bet was not placed.";
+      showResultError(msg);
       return;
     }
     state.balance = data.newBalance;
