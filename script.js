@@ -180,6 +180,10 @@ async function placeBet() {
 
   try {
     const data = await callWorker("placeBet", { userId: state.userId, betAmount });
+    if (data.error === "OFFLINE") {
+      showResultError("The Game is currently offline. Please try again later.");
+      return;
+    }
     if (data.error === "RETRY") {
       showResultError("The server was busy. Your bet was not placed — please try again.");
       return;
