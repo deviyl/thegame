@@ -180,13 +180,19 @@ async function placeBet() {
 
   try {
     const data = await callWorker("placeBet", { userId: state.userId, betAmount });
-    if (data.error) { alert(data.error); return; }
-
+    if (data.error === "RETRY") {
+      showResultError("The server was busy. Your bet was not placed — please try again.");
+      return;
+    }
+    if (data.error) {
+      showResultError(data.error);
+      return;
+    }
     state.balance = data.newBalance;
     updateBalanceUI();
     showResult(data.won, betAmount, data.newBalance);
   } catch (err) {
-    alert("Something went wrong. Please try again.");
+    showResultError("Could not reach the server. Your bet was not placed — please try again.");
   } finally {
     spinBtn.disabled = state.balance <= 0;
     spinText.textContent = "PLAY";
@@ -195,16 +201,20 @@ async function placeBet() {
 
 function showResult(won, betAmount, newBalance) {
   const panel = document.getElementById("result-panel");
-  const icon = document.getElementById("result-icon");
-  const text = document.getElementById("result-text");
-  const sub = document.getElementById("result-sub");
-
   panel.className = "result-panel " + (won ? "win" : "lose");
-  icon.textContent = won ? "◆" : "✕";
-  text.textContent = won ? "YOU WIN" : "YOU LOSE";
-  sub.textContent = won
+  document.getElementById("result-icon").textContent = won ? "◆" : "✕";
+  document.getElementById("result-text").textContent = won ? "YOU WIN" : "YOU LOSE";
+  document.getElementById("result-sub").textContent = won
     ? `+${betAmount} xanax  ·  balance: ${newBalance}`
     : `-${betAmount} xanax  ·  remaining: ${newBalance}`;
+}
+
+function showResultError(message) {
+  const panel = document.getElementById("result-panel");
+  panel.className = "result-panel error";
+  document.getElementById("result-icon").textContent = "!";
+  document.getElementById("result-text").textContent = "BET FAILED";
+  document.getElementById("result-sub").textContent = message;
 }
 
 function clearResult() {
