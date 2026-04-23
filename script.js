@@ -228,9 +228,7 @@ function showError(el, msg) {
     if (span) span.textContent = "LOADING...";
     if (btn) btn.disabled = true;
     const ok = await loginWithKey(savedKey, true);
-    if (!ok) {
-      if (span) span.textContent = "ENTER";
-      if (btn) btn.disabled = false;
-    }
+    if (span) span.textContent = "ENTER";
+    if (btn) btn.disabled = false;
   }
 })();
