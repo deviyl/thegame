@@ -58,7 +58,10 @@ body::before {
 .screen { display: none; position: relative; z-index: 10; min-height: 100vh; }
 .screen.active { display: flex; }
 
-#screen-login,
+#screen-login {
+  align-items: center;
+  justify-content: center;
+}
 
 .login-wrap {
   width: 100%;
