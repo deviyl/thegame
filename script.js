@@ -42,6 +42,24 @@ async function callWorker(action, body = {}) {
   return res.json();
 }
 
+// ── Offline state ─────────────────────────────────────────────
+function applyOfflineState(offline) {
+  state.offline = !!offline;
+  const pill = document.getElementById("offline-pill");
+  if (pill) {
+    state.offline ? pill.classList.remove("hidden") : pill.classList.add("hidden");
+  }
+  updateBalanceUI();
+}
+
+async function fetchGameStatus() {
+  try {
+    const data = await callWorker("getGameStatus", {});
+    applyOfflineState(data.offline);
+  } catch (err) {}
+}
+
+// ── Auth ──────────────────────────────────────────────────────
 async function loginWithKey(apiKey, silent = false) {
   const errorEl = document.getElementById("login-error");
   const btn = document.getElementById("login-btn");
@@ -62,7 +80,6 @@ async function loginWithKey(apiKey, silent = false) {
 
     state.userId = data.id;
     state.userName = data.name;
-
     setCookie(COOKIE_NAME, apiKey, COOKIE_TTL);
 
     document.getElementById("player-name").textContent = data.name;
@@ -70,7 +87,6 @@ async function loginWithKey(apiKey, silent = false) {
 
     await refreshBalance();
     showScreen("screen-game");
-    await checkGameStatus();
     startBalancePolling();
     return true;
   } catch (err) {
@@ -98,46 +114,26 @@ document.getElementById("api-key-input")?.addEventListener("keydown", (e) => {
 function logout() {
   deleteCookie(COOKIE_NAME);
   stopBalancePolling();
-  state = { userId: null, userName: null, balance: 0 };
+  state = { userId: null, userName: null, balance: 0, offline: false };
   document.getElementById("api-key-input").value = "";
   document.getElementById("login-error").classList.add("hidden");
+  const pill = document.getElementById("offline-pill");
+  if (pill) pill.classList.add("hidden");
   clearResult();
   showScreen("screen-login");
 }
 
-function setOfflineState(offline) {
-  const banner = document.getElementById("offline-banner");
-  const spinBtn = document.getElementById("spin-btn");
-  const betPanel = document.getElementById("bet-panel");
-  if (!banner) return;
-  if (offline) {
-    banner.classList.remove("hidden");
-    if (spinBtn) spinBtn.disabled = true;
-    if (betPanel) { betPanel.style.opacity = "0.4"; betPanel.style.pointerEvents = "none"; }
-  } else {
-    banner.classList.add("hidden");
-    updateBalanceUI();
-  }
-}
-
-async function checkGameStatus() {
-  try {
-    const data = await callWorker("getGameStatus", {});
-    setOfflineState(data.offline);
-  } catch (err) {}
-}
-
+// ── Balance & status polling ──────────────────────────────────
 async function refreshBalance() {
   try {
-    const [balanceData, statusData] = await Promise.all([
+    const [balData, statusData] = await Promise.all([
       callWorker("getBalance", { userId: state.userId }),
       callWorker("getGameStatus", {}),
     ]);
-    if (balanceData.balance !== undefined) {
-      state.balance = balanceData.balance;
-      updateBalanceUI();
+    if (balData.balance !== undefined) {
+      state.balance = balData.balance;
     }
-    setOfflineState(statusData.offline);
+    applyOfflineState(statusData.offline);
   } catch (err) {}
 }
 
@@ -155,23 +151,25 @@ function stopBalancePolling() {
   }
 }
 
+// ── UI ────────────────────────────────────────────────────────
 function updateBalanceUI() {
   const amountEl = document.getElementById("balance-amount");
   const zeroMsg = document.getElementById("balance-zero-msg");
   const spinBtn = document.getElementById("spin-btn");
   const betPanel = document.getElementById("bet-panel");
 
+  if (!amountEl) return;
   amountEl.textContent = state.balance;
 
-  if (state.balance <= 0) {
-    zeroMsg.classList.remove("hidden");
-    spinBtn.disabled = true;
-    betPanel.style.opacity = "0.4";
-    betPanel.style.pointerEvents = "none";
-  } else if (state.offline) {
+  if (state.offline) {
     zeroMsg.classList.add("hidden");
     spinBtn.disabled = true;
     betPanel.style.opacity = "0.6";
+    betPanel.style.pointerEvents = "none";
+  } else if (state.balance <= 0) {
+    zeroMsg.classList.remove("hidden");
+    spinBtn.disabled = true;
+    betPanel.style.opacity = "0.4";
     betPanel.style.pointerEvents = "none";
   } else {
     zeroMsg.classList.add("hidden");
@@ -199,6 +197,7 @@ document.getElementById("bet-input")?.addEventListener("change", () => {
   input.value = Math.max(1, Math.min(state.balance, parseInt(input.value) || 1));
 });
 
+// ── Betting ───────────────────────────────────────────────────
 async function placeBet() {
   const betInput = document.getElementById("bet-input");
   const betAmount = parseInt(betInput.value);
@@ -215,13 +214,13 @@ async function placeBet() {
     const data = await callWorker("placeBet", { userId: state.userId, betAmount });
     if (data.error) {
       const errorMessages = {
-        "OFFLINE":             "The Game is currently offline. Please try again later.",
-        "RETRY":               "The server was busy — your bet was not placed. Please try again.",
-        "Missing fields":      "Something went wrong with your bet. Please refresh and try again.",
-        "Invalid bet":         "Invalid bet amount. Please try again.",
-        "User not found":      "Your account was not found. Please log out and back in.",
-        "Insufficient balance":"Your bet exceeds your current balance.",
-        "System unavailable":  "The Game is temporarily unavailable. Please try again shortly.",
+        "OFFLINE":              "The Game is currently offline. Please try again later.",
+        "RETRY":                "The server was busy — your bet was not placed. Please try again.",
+        "Missing fields":       "Something went wrong with your bet. Please refresh and try again.",
+        "Invalid bet":          "Invalid bet amount. Please try again.",
+        "User not found":       "Your account was not found. Please log out and back in.",
+        "Insufficient balance": "Your bet exceeds your current balance.",
+        "System unavailable":   "The Game is temporarily unavailable. Please try again shortly.",
       };
       const msg = errorMessages[data.error] || "An unexpected error occurred. Your bet was not placed.";
       showResultError(msg);
@@ -233,11 +232,12 @@ async function placeBet() {
   } catch (err) {
     showResultError("Could not reach the server. Your bet was not placed — please try again.");
   } finally {
-    spinBtn.disabled = state.balance <= 0;
     spinText.textContent = "PLAY";
+    updateBalanceUI();
   }
 }
 
+// ── Result display ────────────────────────────────────────────
 function showResult(won, betAmount, newBalance) {
   const panel = document.getElementById("result-panel");
   panel.className = "result-panel " + (won ? "win" : "lose");
@@ -269,43 +269,15 @@ function showError(el, msg) {
   el.classList.remove("hidden");
 }
 
-function setOfflineUI(offline) {
-  state.offline = !!offline;
-  const pill = document.getElementById("offline-pill");
-  if (pill) state.offline ? pill.classList.remove("hidden") : pill.classList.add("hidden");
-  updateBalanceUI();
-}
-
-async function checkGameStatus() {
-  try {
-    const data = await callWorker("getGameStatus", {});
-    setOfflineUI(data.offline);
-  } catch (err) {}
-}
-
-function setOfflineUI(offline) {
-  state.offline = !!offline;
-  const pill = document.getElementById("offline-pill");
-  if (pill) state.offline ? pill.classList.remove("hidden") : pill.classList.add("hidden");
-  updateBalanceUI();
-}
-
-async function checkGameStatus() {
-  try {
-    const data = await callWorker("getGameStatus", {});
-    setOfflineUI(data.offline);
-  } catch (err) {}
-}
-
+// ── Init ──────────────────────────────────────────────────────
 (async function init() {
-  checkGameStatus();
   const savedKey = getCookie(COOKIE_NAME);
   if (savedKey) {
     const btn = document.getElementById("login-btn");
     const span = btn?.querySelector("span");
     if (span) span.textContent = "LOADING...";
     if (btn) btn.disabled = true;
-    const ok = await loginWithKey(savedKey, true);
+    await loginWithKey(savedKey, true);
     if (span) span.textContent = "ENTER";
     if (btn) btn.disabled = false;
   }
