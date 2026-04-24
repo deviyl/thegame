@@ -7,6 +7,7 @@ let state = {
   userId: null,
   userName: null,
   balance: 0,
+  offline: false,
 };
 
 let balanceInterval = null;
@@ -167,6 +168,11 @@ function updateBalanceUI() {
     spinBtn.disabled = true;
     betPanel.style.opacity = "0.4";
     betPanel.style.pointerEvents = "none";
+  } else if (state.offline) {
+    zeroMsg.classList.add("hidden");
+    spinBtn.disabled = true;
+    betPanel.style.opacity = "0.6";
+    betPanel.style.pointerEvents = "none";
   } else {
     zeroMsg.classList.add("hidden");
     spinBtn.disabled = false;
@@ -264,10 +270,10 @@ function showError(el, msg) {
 }
 
 function setOfflineUI(offline) {
+  state.offline = !!offline;
   const pill = document.getElementById("offline-pill");
-  const spinBtn = document.getElementById("spin-btn");
-  if (pill) offline ? pill.classList.remove("hidden") : pill.classList.add("hidden");
-  if (spinBtn) spinBtn.disabled = offline || state.balance <= 0;
+  if (pill) state.offline ? pill.classList.remove("hidden") : pill.classList.add("hidden");
+  updateBalanceUI();
 }
 
 async function checkGameStatus() {
@@ -278,10 +284,10 @@ async function checkGameStatus() {
 }
 
 function setOfflineUI(offline) {
+  state.offline = !!offline;
   const pill = document.getElementById("offline-pill");
-  const spinBtn = document.getElementById("spin-btn");
-  if (pill) offline ? pill.classList.remove("hidden") : pill.classList.add("hidden");
-  if (spinBtn) spinBtn.disabled = offline || state.balance <= 0;
+  if (pill) state.offline ? pill.classList.remove("hidden") : pill.classList.add("hidden");
+  updateBalanceUI();
 }
 
 async function checkGameStatus() {
