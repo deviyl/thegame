@@ -49,6 +49,23 @@ function applyOfflineState(offline) {
   if (pill) {
     state.offline ? pill.classList.remove("hidden") : pill.classList.add("hidden");
   }
+  const panel = document.getElementById("result-panel");
+  const icon = document.getElementById("result-icon");
+  const text = document.getElementById("result-text");
+  const sub = document.getElementById("result-sub");
+  if (panel && icon && text && sub) {
+    if (state.offline) {
+      panel.className = "result-panel error";
+      icon.textContent = "!";
+      text.textContent = "OFFLINE";
+      sub.textContent = "The Game is currently offline. Please try again later.";
+    } else if (panel.className === "result-panel error" && text.textContent === "OFFLINE") {
+      panel.className = "result-panel";
+      icon.textContent = "";
+      text.textContent = "";
+      sub.textContent = "";
+    }
+  }
   updateBalanceUI();
 }
 
