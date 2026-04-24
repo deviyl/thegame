@@ -203,6 +203,18 @@ body::before {
 
 .hidden { display: none !important; }
 
+
+.offline-pill {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  color: var(--red);
+  background: var(--red-dim);
+  border: 1px solid var(--red);
+  padding: 0.25rem 0.6rem;
+  animation: blink 2s step-end infinite;
+}
+
 #screen-game { flex-direction: column; }
 
 .game-wrap { width: 100%; min-height: 100vh; display: flex; flex-direction: column; }
@@ -303,6 +315,12 @@ body::before {
   letter-spacing: 0.3em;
   color: var(--red);
   animation: blink 2s step-end infinite;
+}
+
+
+.offline-icon {
+  font-size: 1rem;
+  animation: none;
 }
 
 @keyframes blink {
