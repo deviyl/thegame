@@ -69,6 +69,7 @@ async function loginWithKey(apiKey, silent = false) {
 
     await refreshBalance();
     showScreen("screen-game");
+    await checkGameStatus();
     startBalancePolling();
     return true;
   } catch (err) {
@@ -103,13 +104,39 @@ function logout() {
   showScreen("screen-login");
 }
 
+function setOfflineState(offline) {
+  const banner = document.getElementById("offline-banner");
+  const spinBtn = document.getElementById("spin-btn");
+  const betPanel = document.getElementById("bet-panel");
+  if (!banner) return;
+  if (offline) {
+    banner.classList.remove("hidden");
+    if (spinBtn) spinBtn.disabled = true;
+    if (betPanel) { betPanel.style.opacity = "0.4"; betPanel.style.pointerEvents = "none"; }
+  } else {
+    banner.classList.add("hidden");
+    updateBalanceUI();
+  }
+}
+
+async function checkGameStatus() {
+  try {
+    const data = await callWorker("getGameStatus", {});
+    setOfflineState(data.offline);
+  } catch (err) {}
+}
+
 async function refreshBalance() {
   try {
-    const data = await callWorker("getBalance", { userId: state.userId });
-    if (data.balance !== undefined) {
-      state.balance = data.balance;
+    const [balanceData, statusData] = await Promise.all([
+      callWorker("getBalance", { userId: state.userId }),
+      callWorker("getGameStatus", {}),
+    ]);
+    if (balanceData.balance !== undefined) {
+      state.balance = balanceData.balance;
       updateBalanceUI();
     }
+    setOfflineState(statusData.offline);
   } catch (err) {}
 }
 
@@ -236,7 +263,36 @@ function showError(el, msg) {
   el.classList.remove("hidden");
 }
 
+function setOfflineUI(offline) {
+  const pill = document.getElementById("offline-pill");
+  const spinBtn = document.getElementById("spin-btn");
+  if (pill) offline ? pill.classList.remove("hidden") : pill.classList.add("hidden");
+  if (spinBtn) spinBtn.disabled = offline || state.balance <= 0;
+}
+
+async function checkGameStatus() {
+  try {
+    const data = await callWorker("getGameStatus", {});
+    setOfflineUI(data.offline);
+  } catch (err) {}
+}
+
+function setOfflineUI(offline) {
+  const pill = document.getElementById("offline-pill");
+  const spinBtn = document.getElementById("spin-btn");
+  if (pill) offline ? pill.classList.remove("hidden") : pill.classList.add("hidden");
+  if (spinBtn) spinBtn.disabled = offline || state.balance <= 0;
+}
+
+async function checkGameStatus() {
+  try {
+    const data = await callWorker("getGameStatus", {});
+    setOfflineUI(data.offline);
+  } catch (err) {}
+}
+
 (async function init() {
+  checkGameStatus();
   const savedKey = getCookie(COOKIE_NAME);
   if (savedKey) {
     const btn = document.getElementById("login-btn");
