@@ -193,7 +193,9 @@ async function placeBet() {
     const data = await api("placeBet", { userId: state.userId, betAmount });
     if (data.error) {
       setResult("error", "⊘", "BET FAILED", data.error);
-      if (data.error.toLowerCase().includes("offline")) applyOffline(1);
+      if (data.error.toLowerCase().includes("offline")) {
+        setTimeout(() => applyOffline(true), 5000);
+      }
       return;
     }
     state.balance = data.newBalance;
