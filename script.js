@@ -46,17 +46,17 @@ function setResult(type, icon, heading, sub) {
 }
 
 // ── Offline state ─────────────────────────────────────────────
-function applyOffline(offline) {
+function applyOffline(offline, updatePanel = true) {
   state.offline = !!offline;
   const pill = document.getElementById("offline-pill");
   pill && (state.offline ? pill.classList.remove("hidden") : pill.classList.add("hidden"));
-  const panel = document.getElementById("result-panel");
-  const isShowingOffline = panel?.classList.contains("error") &&
-    document.getElementById("result-text")?.textContent === "OFFLINE";
-  if (state.offline) {
-    setResult("error", "⊘", "OFFLINE", "The Game is currently offline. Please try again later.");
-  } else if (isShowingOffline) {
-    setResult("", "", "", "");
+  if (updatePanel) {
+    const isShowingOffline = document.getElementById("result-text")?.textContent === "OFFLINE";
+    if (state.offline) {
+      setResult("error", "⊘", "OFFLINE", "The Game is currently offline. Please try again later.");
+    } else if (isShowingOffline) {
+      setResult("", "", "", "");
+    }
   }
   refreshUI();
 }
@@ -195,6 +195,7 @@ async function placeBet() {
     const data = await api("placeBet", { userId: state.userId, betAmount });
     if (data.error) {
       setResult("error", "⊘", "BET FAILED", data.error);
+      if (data.error.toLowerCase().includes("offline")) applyOffline(1);
       return;
     }
     state.balance = data.newBalance;
