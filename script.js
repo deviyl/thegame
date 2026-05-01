@@ -2,7 +2,7 @@ const WORKER = "https://thegame.deviyl.workers.dev";
 const COOKIE = { name: "theGameApi", ttl: 86400 };
 const POLL_MS = 60000;
 
-let state = { userId: null, userName: null, balance: 0, offline: false };
+let state = { userId: null, userName: null, balance: 0, offline: false, pending: false };
 let pollInterval = null;
 
 // ── Cookie handler ────────────────────────────────────────────
@@ -59,6 +59,12 @@ function applyOffline(offline) {
   refreshUI();
 }
 
+// ── Pending lock ──────────────────────────────────────────────
+function applyPending(pending) {
+  state.pending = !!pending;
+  refreshUI();
+}
+
 // ── Balance UI ────────────────────────────────────────────────
 function refreshUI() {
   const amountEl = document.getElementById("balance-amount");
@@ -73,12 +79,19 @@ function refreshUI() {
     zeroMsg.classList.add("hidden");
     spinBtn.disabled = true;
     betPanel.style.cssText = "opacity:0.6;pointer-events:none";
+  } else if (state.pending) {
+    zeroMsg.classList.add("hidden");
+    document.getElementById("balance-pending-msg")?.classList.remove("hidden");
+    spinBtn.disabled = true;
+    betPanel.style.cssText = "opacity:0.6;pointer-events:none";
   } else if (state.balance <= 0) {
+    document.getElementById("balance-pending-msg")?.classList.add("hidden");
     zeroMsg.classList.remove("hidden");
     spinBtn.disabled = true;
     betPanel.style.cssText = "opacity:0.4;pointer-events:none";
   } else {
     zeroMsg.classList.add("hidden");
+    document.getElementById("balance-pending-msg")?.classList.add("hidden");
     spinBtn.disabled = false;
     betPanel.style.cssText = "opacity:1;pointer-events:auto";
     const betInput = document.getElementById("bet-input");
@@ -94,6 +107,7 @@ async function poll() {
       api("getGameStatus", {}),
     ]);
     if (bal.balance !== undefined) state.balance = bal.balance;
+    applyPending(!!bal.pending);
     applyOffline(status.offline);
   } catch (_) {}
 }
@@ -195,6 +209,9 @@ async function placeBet() {
       setResult("error", "⊘", "BET FAILED", data.error);
       if (data.error.toLowerCase().includes("offline")) {
         setTimeout(() => applyOffline(true), 5000);
+      }
+      if (data.error === "PENDING") {
+        setTimeout(() => applyPending(true), 5000);
       }
       return;
     }
