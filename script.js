@@ -109,6 +109,7 @@ async function poll() {
     if (bal.balance !== undefined) state.balance = bal.balance;
     applyPending(!!bal.pending);
     applyOffline(status.offline);
+    cookie("set", cookie("get"));
   } catch (_) {}
 }
 
