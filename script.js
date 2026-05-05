@@ -229,5 +229,16 @@ document.getElementById("api-key-input")?.addEventListener("keydown", e => {
 // ── Init ──────────────────────────────────────────────────────
 (async function init() {
   const saved = cookie("get");
-  if (saved) await login(saved);
+  if (saved) {
+    const btn  = document.getElementById("login-btn");
+    const span = btn?.querySelector("span");
+    const input = document.getElementById("api-key-input");
+    if (span) span.textContent = "LOADING...";
+    if (btn) btn.disabled = true;
+    if (input) input.placeholder = "RESTORING SESSION...";
+    await login(saved);
+    if (span) span.textContent = "ENTER";
+    if (btn) btn.disabled = false;
+    if (input) input.placeholder = "ENTER YOUR PUBLIC API KEY";
+  }
 })();
