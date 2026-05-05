@@ -2,10 +2,10 @@ const WORKER = "https://thegame.deviyl.workers.dev";
 const COOKIE = { name: "theGameApi", ttl: 86400 };
 const POLL_MS = 60000;
 
-let state = { userId: null, userName: null, balance: 0, offline: false, pending: false };
+let state = { userId: null, userName: null, balance: 0, gameState: "ok" };
 let pollInterval = null;
 
-// ── Cookie handler ────────────────────────────────────────────
+// ── Cookie ────────────────────────────────────────────────────
 function cookie(action, value) {
   if (action === "get") {
     const m = document.cookie.split("; ").find(c => c.startsWith(COOKIE.name + "="));
@@ -20,7 +20,7 @@ function cookie(action, value) {
   }
 }
 
-// ── Worker call ───────────────────────────────────────────────
+// ── Worker ────────────────────────────────────────────────────
 async function api(action, body = {}) {
   const res = await fetch(`${WORKER}?action=${action}`, {
     method: "POST",
@@ -45,23 +45,27 @@ function setResult(type, icon, heading, sub) {
   document.getElementById("result-sub").textContent = sub;
 }
 
-// ── Offline state ─────────────────────────────────────────────
-function applyOffline(offline) {
-  state.offline = !!offline;
+// ── Game state ────────────────────────────────────────────────
+function applyState(gameState, stateMessage) {
+  state.gameState = gameState || "ok";
   const pill = document.getElementById("offline-pill");
-  pill && (state.offline ? pill.classList.remove("hidden") : pill.classList.add("hidden"));
-  const isShowingOffline = document.getElementById("result-text")?.textContent === "OFFLINE";
-  if (state.offline) {
-    setResult("error", "⊘", "OFFLINE", "The Game is currently offline. Please try again later.");
-  } else if (isShowingOffline) {
+  const isBlocked = state.gameState !== "ok";
+  const isShowingStateMsg = ["OFFLINE", "PAYOUT PENDING"].includes(
+    document.getElementById("result-text")?.textContent
+  );
+
+  pill && (state.gameState === "offline"
+    ? pill.classList.remove("hidden")
+    : pill.classList.add("hidden"));
+
+  if (state.gameState === "offline") {
+    setResult("error", "⊘", "OFFLINE", stateMessage);
+  } else if (state.gameState === "pending") {
+    setResult("error", "⊘", "PAYOUT PENDING", stateMessage);
+  } else if (isShowingStateMsg) {
     setResult("", "", "", "");
   }
-  refreshUI();
-}
 
-// ── Pending lock ──────────────────────────────────────────────
-function applyPending(pending) {
-  state.pending = !!pending;
   refreshUI();
 }
 
@@ -74,24 +78,18 @@ function refreshUI() {
   if (!amountEl) return;
 
   amountEl.textContent = state.balance;
+  const blocked = state.gameState !== "ok";
 
-  if (state.offline) {
+  if (blocked) {
     zeroMsg.classList.add("hidden");
-    spinBtn.disabled = true;
-    betPanel.style.cssText = "opacity:0.6;pointer-events:none";
-  } else if (state.pending) {
-    zeroMsg.classList.add("hidden");
-    document.getElementById("balance-pending-msg")?.classList.remove("hidden");
     spinBtn.disabled = true;
     betPanel.style.cssText = "opacity:0.6;pointer-events:none";
   } else if (state.balance <= 0) {
-    document.getElementById("balance-pending-msg")?.classList.add("hidden");
     zeroMsg.classList.remove("hidden");
     spinBtn.disabled = true;
     betPanel.style.cssText = "opacity:0.4;pointer-events:none";
   } else {
     zeroMsg.classList.add("hidden");
-    document.getElementById("balance-pending-msg")?.classList.add("hidden");
     spinBtn.disabled = false;
     betPanel.style.cssText = "opacity:1;pointer-events:auto";
     const betInput = document.getElementById("bet-input");
@@ -102,13 +100,9 @@ function refreshUI() {
 // ── Polling ───────────────────────────────────────────────────
 async function poll() {
   try {
-    const [bal, status] = await Promise.all([
-      api("getBalance", { userId: state.userId }),
-      api("getGameStatus", {}),
-    ]);
+    const bal = await api("getBalance", { userId: state.userId });
     if (bal.balance !== undefined) state.balance = bal.balance;
-    applyPending(!!bal.pending);
-    applyOffline(status.offline);
+    applyState(bal.gameState, bal.stateMessage);
     cookie("set", cookie("get"));
   } catch (_) {}
 }
@@ -124,23 +118,27 @@ function stopPolling() {
 }
 
 // ── Auth ──────────────────────────────────────────────────────
-async function loginWithKey(apiKey, silent = false) {
+async function login(apiKey) {
   const errorEl = document.getElementById("login-error");
   const btn     = document.getElementById("login-btn");
   const span    = btn?.querySelector("span");
+  const fromInput = !apiKey;
 
-  if (!silent) {
-    errorEl.classList.add("hidden");
-    btn.disabled = true;
-    span.textContent = "VERIFYING...";
+  if (fromInput) {
+    apiKey = document.getElementById("api-key-input").value.trim();
+    if (!apiKey) { showErr(errorEl, "Please enter your API key."); return; }
   }
+
+  errorEl.classList.add("hidden");
+  btn.disabled = true;
+  span.textContent = fromInput ? "VERIFYING..." : "LOADING...";
 
   try {
     const data = await api("verifyUser", { apiKey });
     if (data.error) {
-      if (!silent) showErr(errorEl, data.error);
+      showErr(errorEl, data.error);
       cookie("del");
-      return false;
+      return;
     }
     state.userId   = data.id;
     state.userName = data.name;
@@ -150,26 +148,19 @@ async function loginWithKey(apiKey, silent = false) {
     await poll();
     showScreen("screen-game");
     startPolling();
-    return true;
   } catch (_) {
-    if (!silent) showErr(errorEl, "Could not connect. Please try again.");
-    return false;
+    showErr(errorEl, "Could not connect. Please try again.");
+    cookie("del");
   } finally {
-    if (!silent) { btn.disabled = false; span.textContent = "ENTER"; }
+    btn.disabled = false;
+    span.textContent = "ENTER";
   }
-}
-
-async function login() {
-  const apiKey = document.getElementById("api-key-input").value.trim();
-  const errorEl = document.getElementById("login-error");
-  if (!apiKey) { showErr(errorEl, "Please enter your API key."); return; }
-  await loginWithKey(apiKey, false);
 }
 
 function logout() {
   cookie("del");
   stopPolling();
-  state = { userId: null, userName: null, balance: 0, offline: false };
+  state = { userId: null, userName: null, balance: 0, gameState: "ok" };
   document.getElementById("api-key-input").value = "";
   document.getElementById("login-error").classList.add("hidden");
   document.getElementById("offline-pill")?.classList.add("hidden");
@@ -208,12 +199,7 @@ async function placeBet() {
     const data = await api("placeBet", { userId: state.userId, betAmount });
     if (data.error) {
       setResult("error", "⊘", "BET FAILED", data.error);
-      if (data.error.toLowerCase().includes("offline")) {
-        setTimeout(() => applyOffline(true), 5000);
-      }
-      if (data.error === "PENDING") {
-        setTimeout(() => applyPending(true), 5000);
-      }
+      setTimeout(() => poll(), 5000);
       return;
     }
     state.balance = data.newBalance;
@@ -236,18 +222,12 @@ async function placeBet() {
 // ── Helpers ───────────────────────────────────────────────────
 function showErr(el, msg) { el.textContent = msg; el.classList.remove("hidden"); }
 
-document.getElementById("api-key-input")?.addEventListener("keydown", e => { if (e.key === "Enter") login(); });
+document.getElementById("api-key-input")?.addEventListener("keydown", e => {
+  if (e.key === "Enter") login();
+});
 
 // ── Init ──────────────────────────────────────────────────────
 (async function init() {
   const saved = cookie("get");
-  if (saved) {
-    const btn  = document.getElementById("login-btn");
-    const span = btn?.querySelector("span");
-    if (span) span.textContent = "LOADING...";
-    if (btn)  btn.disabled = true;
-    await loginWithKey(saved, true);
-    if (span) span.textContent = "ENTER";
-    if (btn)  btn.disabled = false;
-  }
+  if (saved) await login(saved);
 })();
