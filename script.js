@@ -206,7 +206,7 @@ async function placeBet() {
     setResult(
       data.won ? "win" : "lose",
       data.won ? "◆" : "✖",
-      data.won ? "YOU WIN" : "YOU LOSE",
+      data.won ? "YOU WON THE GAME" : "YOU LOST THE GAME",
       data.won
         ? `+${betAmount} xanax  ·  balance: ${data.newBalance}`
         : `-${betAmount} xanax  ·  remaining: ${data.newBalance}`
